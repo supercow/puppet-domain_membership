@@ -18,9 +18,6 @@
 # [*machine_ou*]
 #   OU in the domain to create the machine account in. This is used durring
 #   the initial join process. It cannot move the machine account later on.
-# [*force*]
-#   Forces the machine to join a new domain even if it has prior membership
-#   to other domains. Valid values are `true` and `false`. Defaults to `false`.
 # [*resetpw*]
 #   Whether or not to force a machine password reset if for some reason the trust
 #   between the domain and the machine becomes unsyncronized. Valid values are `true`
@@ -32,7 +29,6 @@
 #    domain   => 'pupetlabs.lan',
 #    username => 'administrator',
 #    password => 'fake5ecret',
-#    force    => true,
 #    resetpw  => false,
 #  }
 #
@@ -50,14 +46,12 @@ class domain_membership (
   $password,
   $secure_password = false,
   $machine_ou      = undef,
-  $force           = false,
   $resetpw         = true,
 ){
 
   # Validate Parameters
   validate_string($username)
   validate_string($password)
-  validate_bool($force)
   validate_bool($resetpw)
   unless is_domain_name($domain) {
     fail('Class[domain_membership] domain parameter must be a valid rfc1035 domain name')
@@ -80,20 +74,9 @@ class domain_membership (
     $_machine_ou = '$null'
   }
 
-  # $force toggles between two types of joins, these are just a small selection
-  # from the overall set of join choices.
-  #
-  # 32 (0x20) Allows a join to a new domain, even if the computer is already joined to a domain.
-  # 1 (0x1)   Default. Joins a computer to a domain. If this value is not specified, the join is a computer to a workgroup.
-  if $force {
-    $fjoinoption = '32'
-  }else{
-    $fjoinoption = '1'
-  }
-
   # Since the powershell command is combersome, we'll construct it here for clarity... well, almost clarity
   #
-  $command = "(Get-WmiObject -Class Win32_ComputerSystem).JoinDomainOrWorkGroup('${domain}','${_password}','${username}@${domain}',${_machine_ou},${fjoinoption})"
+  $command = "(Get-WmiObject -Class Win32_ComputerSystem).JoinDomainOrWorkGroup('${domain}','${_password}','${username}@${domain}',${_machine_ou},32)"
 
   exec { 'join_domain':
     command  => $command,
